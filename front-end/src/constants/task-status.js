@@ -1,7 +1,7 @@
 export const TASK_STATUS = {
-  TODO: "todo",
-  DOING: "doing",
-  DONE: "done",
+  TODO: "To Do",
+  DOING: "In Progress",
+  DONE: "Done",
 };
 
 export const TASK_STATUS_META = {

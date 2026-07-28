@@ -1,61 +1,107 @@
 import { create } from "zustand";
-import { mockTasks } from "../data/mock-tasks.js";
+import * as tasksApi from "../api/tasks.api.js";
+import { getApiErrorMessage } from "../api/client.js";
 import { TASK_STATUS } from "../constants/task-status.js";
 
 const normalizeTaskInput = ({ title, description }) => ({
   title: title.trim(),
-  description: description.trim(),
+  description: description.trim() || undefined,
 });
 
 export const useTaskStore = create((set, get) => ({
-  tasks: mockTasks,
-  createTask: (input) => {
-    const task = normalizeTaskInput(input);
+  tasks: [],
+  isLoading: false,
+  error: null,
 
-    if (!task.title) {
-      return false;
+  // Call API: GET /tasks — load board data into store
+  fetchTasks: async () => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const tasks = await tasksApi.fetchTasks();
+      set({ tasks, isLoading: false });
+      return { ok: true, tasks };
+    } catch (error) {
+      const message = getApiErrorMessage(error, "Failed to load tasks");
+      set({ isLoading: false, error: message });
+      return { ok: false, message };
     }
-
-    const newTask = {
-      id: crypto.randomUUID(),
-      title: task.title,
-      description: task.description,
-      status: TASK_STATUS.TODO,
-      createdAt: new Date().toISOString(),
-    };
-
-    set((state) => ({
-      tasks: [newTask, ...state.tasks],
-    }));
-
-    return true;
   },
-  updateTaskStatus: (taskId, status) => {
-    const taskToUpdate = get().tasks.find((task) => task.id === taskId);
 
-    if (!taskToUpdate) {
-      return false;
+  // Call API: POST /tasks — create task then prepend to local state
+  createTask: async (input) => {
+    const taskInput = normalizeTaskInput(input);
+
+    if (!taskInput.title) {
+      return {
+        ok: false,
+        message: "Please add a title before creating a task.",
+      };
     }
 
+    try {
+      const task = await tasksApi.createTask({
+        ...taskInput,
+        status: TASK_STATUS.TODO,
+      });
+
+      set((state) => ({
+        tasks: [task, ...state.tasks],
+      }));
+
+      return { ok: true, task };
+    } catch (error) {
+      return {
+        ok: false,
+        message: getApiErrorMessage(error, "Failed to create task"),
+      };
+    }
+  },
+
+  // Call API: PUT /tasks/:id — update status after drag-and-drop
+  updateTaskStatus: async (taskId, status) => {
+    const previousTasks = get().tasks;
+
+    // Optimistic UI update before API responds
     set((state) => ({
       tasks: state.tasks.map((task) =>
         task.id === taskId ? { ...task, status } : task,
       ),
     }));
 
-    return true;
-  },
-  deleteTask: (taskId) => {
-    const taskExists = get().tasks.some((task) => task.id === taskId);
+    try {
+      const task = await tasksApi.updateTask(taskId, { status });
 
-    if (!taskExists) {
-      return false;
+      set((state) => ({
+        tasks: state.tasks.map((item) => (item.id === taskId ? task : item)),
+      }));
+
+      return { ok: true, task };
+    } catch (error) {
+      // Roll back local state if API update fails
+      set({ tasks: previousTasks });
+      return {
+        ok: false,
+        message: getApiErrorMessage(error, "Failed to update task status"),
+      };
     }
+  },
 
-    set((state) => ({
-      tasks: state.tasks.filter((task) => task.id !== taskId),
-    }));
+  // Call API: DELETE /tasks/:id — remove task from board after soft-delete
+  deleteTask: async (taskId) => {
+    try {
+      await tasksApi.deleteTask(taskId);
 
-    return true;
+      set((state) => ({
+        tasks: state.tasks.filter((task) => task.id !== taskId),
+      }));
+
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        message: getApiErrorMessage(error, "Failed to delete task"),
+      };
+    }
   },
 }));

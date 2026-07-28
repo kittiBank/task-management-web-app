@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TASK_STATUS } from "../constants/task-status.js";
 import { useTaskStore } from "../store/use-task-store.js";
 import { Navbar } from "../components/layout/Navbar.jsx";
@@ -8,7 +8,6 @@ import { ConfirmDialog } from "../components/ui/ConfirmDialog.jsx";
 import { Modal } from "../components/ui/Modal.jsx";
 import { ToastViewport } from "../components/ui/ToastViewport.jsx";
 
-// Board columns data
 const boardColumns = [
   {
     title: "To-do",
@@ -30,21 +29,22 @@ const boardColumns = [
   },
 ];
 
-// State management
 export function TaskBoardPage() {
   const tasks = useTaskStore((state) => state.tasks);
+  const isLoading = useTaskStore((state) => state.isLoading);
+  const fetchTasks = useTaskStore((state) => state.fetchTasks);
   const createTask = useTaskStore((state) => state.createTask);
   const updateTaskStatus = useTaskStore((state) => state.updateTaskStatus);
   const deleteTask = useTaskStore((state) => state.deleteTask);
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [taskPendingDelete, setTaskPendingDelete] = useState(null);
   const [toasts, setToasts] = useState([]);
 
+  // Push a new toast notification to the UI
   const pushToast = ({ type, title, message }) => {
     const id = crypto.randomUUID();
-
     setToasts((current) => [...current, { id, type, title, message }]);
-
     return id;
   };
 
@@ -52,14 +52,32 @@ export function TaskBoardPage() {
     setToasts((current) => current.filter((toast) => toast.id !== toastId));
   };
 
-  const handleCreateTask = (form) => {
-    const wasCreated = createTask(form);
+  // Call API on page load: GET /tasks via store.fetchTasks()
+  useEffect(() => {
+    const loadTasks = async () => {
+      const result = await fetchTasks();
 
-    if (!wasCreated) {
+      if (!result.ok) {
+        pushToast({
+          type: "error",
+          title: "Failed to load tasks",
+          message: result.message,
+        });
+      }
+    };
+
+    void loadTasks();
+  }, [fetchTasks]);
+
+  // Call API: POST /tasks via store.createTask()
+  const handleCreateTask = async (form) => {
+    const result = await createTask(form);
+
+    if (!result.ok) {
       pushToast({
         type: "error",
         title: "Task creation failed",
-        message: "Please add a title before creating a task.",
+        message: result.message,
       });
       return false;
     }
@@ -73,15 +91,15 @@ export function TaskBoardPage() {
     return true;
   };
 
-  // Handle status change
-  const handleStatusChange = (taskId, status) => {
-    const wasUpdated = updateTaskStatus(taskId, status);
+  // Call API: PUT /tasks/:id via store.updateTaskStatus() when card is dropped
+  const handleStatusChange = async (taskId, status) => {
+    const result = await updateTaskStatus(taskId, status);
 
-    if (!wasUpdated) {
+    if (!result.ok) {
       pushToast({
         type: "error",
         title: "Update failed",
-        message: "The task could not be moved. Please try again.",
+        message: result.message,
       });
       return;
     }
@@ -93,19 +111,19 @@ export function TaskBoardPage() {
     });
   };
 
-  // Handle confirm delete
-  const handleConfirmDelete = () => {
+  // Call API: DELETE /tasks/:id via store.deleteTask() after confirm dialog
+  const handleConfirmDelete = async () => {
     if (!taskPendingDelete) {
       return;
     }
 
-    const wasDeleted = deleteTask(taskPendingDelete.id);
+    const result = await deleteTask(taskPendingDelete.id);
 
-    if (!wasDeleted) {
+    if (!result.ok) {
       pushToast({
         type: "error",
         title: "Delete failed",
-        message: "The task could not be deleted. Please try again.",
+        message: result.message,
       });
       setTaskPendingDelete(null);
       return;
@@ -119,7 +137,6 @@ export function TaskBoardPage() {
     setTaskPendingDelete(null);
   };
 
-  // Get tasks by status
   const tasksByStatus = boardColumns.map((column) => ({
     ...column,
     tasks: tasks.filter((task) => task.status === column.status),
@@ -133,19 +150,28 @@ export function TaskBoardPage() {
       />
 
       <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid gap-5 xl:grid-cols-3">
-          {tasksByStatus.map((column) => (
-            <KanbanColumn
-              key={column.status}
-              title={column.title}
-              description={column.description}
-              accentClassName={column.accentClassName}
-              tasks={column.tasks}
-              onStatusChange={handleStatusChange}
-              onDelete={setTaskPendingDelete}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="rounded-[2rem] border border-slate-200 bg-white/80 px-6 py-16 text-center shadow-sm">
+            <p className="text-sm font-medium text-slate-600">
+              Loading tasks...
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-5 xl:grid-cols-3">
+            {tasksByStatus.map((column) => (
+              <KanbanColumn
+                key={column.status}
+                title={column.title}
+                description={column.description}
+                status={column.status}
+                accentClassName={column.accentClassName}
+                tasks={column.tasks}
+                onStatusChange={handleStatusChange}
+                onDelete={setTaskPendingDelete}
+              />
+            ))}
+          </div>
+        )}
       </main>
 
       <ToastViewport toasts={toasts} onDismiss={dismissToast} />

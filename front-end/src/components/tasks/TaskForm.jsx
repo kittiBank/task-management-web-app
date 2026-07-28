@@ -19,10 +19,10 @@ export function TaskForm({ onSubmit }) {
   };
 
   // Handle form submission
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const wasCreated = onSubmit(form);
+    const wasCreated = await onSubmit(form);
 
     if (wasCreated) {
       setForm(initialFormState);
@@ -40,7 +40,9 @@ export function TaskForm({ onSubmit }) {
         </p>
       </div>
 
+      {/* Task form fields */}
       <div className="space-y-4">
+        {/* Title field */}
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-slate-700">
             Title
@@ -55,6 +57,7 @@ export function TaskForm({ onSubmit }) {
           />
         </label>
 
+        {/* Description field */}
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-slate-700">
             Description
@@ -70,6 +73,7 @@ export function TaskForm({ onSubmit }) {
         </label>
       </div>
 
+      {/* Submit button */}
       <button
         type="submit"
         className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
