@@ -2,12 +2,16 @@
 
 A fullstack task management app with a NestJS REST API and a React kanban board UI.
 
+<img width="700" height="400" alt="Screenshot 2569-07-28 at 16 55 27" src="https://github.com/user-attachments/assets/e9a20c95-79ce-4334-a769-8207cf304bc7" />
+
+
 ## Framework
 
 | Layer | Stack |
 |---|---|
 | Backend | NestJS, Prisma, PostgreSQL |
 | Frontend | React, Vite, Tailwind CSS, Zustand, Axios |
+| Database | PostgreSQL |
 
 ## Source Structure
 
@@ -33,81 +37,30 @@ task-management-web-app/
 
 Base URL: `http://localhost:3000`
 
-**Status values:** `To Do` · `In Progress` · `Done`
-
-| Method | Endpoint | Description | Body / Query |
+| Method | Endpoint | Description | Body |
 |---|---|---|---|
-| `GET` | `/tasks` | List all tasks | Query: `?status=To Do` (optional) |
-| `POST` | `/tasks` | Create a task | `{ "title": "string", "description?": "string", "status?": "To Do" }` |
-| `PUT` | `/tasks/:id` | Update a task | `{ "title?": "string", "description?": "string", "status?": "In Progress" }` |
-| `DELETE` | `/tasks/:id` | Soft-delete a task | — |
+| `GET` | `/tasks` | List all tasks | - |
+| `POST` | `/tasks` | Create a task | `"title", "description` |
+| `PUT` | `/tasks/:id` | Update a task | `"title", "description` |
+| `DELETE` | `/tasks/:id` | Soft-delete a task | - |
 
-**Response example (GET /tasks):**
+## How to run on local
+1. **Clone repo**
+   ```bash
+   git clone https://github.com/kittiBank/task-management-web-app.git
+   cd task-management-web-app
+   ```
 
-```json
-{
-  "status": true,
-  "message": "Tasks retrieved successfully",
-  "data": {
-    "tasks": [
-      {
-        "id": "uuid",
-        "title": "Setup project",
-        "description": "Initialize repo",
-        "status": "To Do",
-        "created_at": "2026-07-28T15:00:00.000+07:00",
-        "updated_at": "2026-07-28T15:00:00.000+07:00"
-      }
-    ]
-  }
-}
-```
+2. **Run Docker**
+   ```bash
+   docker compose up --build
+   ```
 
-## Screenshot
+3. **Open web**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:3000
 
-> Add screenshots to `docs/screenshots/` and update paths below.
-
-| Screen | Preview |
-|---|---|
-| Kanban Board | `docs/screenshots/kanban-board.png` |
-| Create Task Modal | `docs/screenshots/create-task-modal.png` |
-
-## Quick Start
-
-Run from the **project root**:
-
+Stop services:
 ```bash
-cd task-management-web-app
-docker compose up --build
-# or
-pnpm up
-```
-
-Optional: copy `.env.example` to `.env` to override ports or credentials.
-
-| Service | URL |
-|---|---|
-| Frontend | http://localhost:5173 |
-| Backend API | http://localhost:3000 |
-| PostgreSQL | localhost:5432 |
-
-**Local dev (without Docker):**
-
-```bash
-cp back-end/.env.example back-end/.env
-cp front-end/.env.example front-end/.env
-pnpm --dir back-end run start:dev
-pnpm --dir front-end run dev
-```
-
-Stop all services:
-
-```bash
-pnpm down
-```
-
-Re-run migrate + seed only:
-
-```bash
-pnpm db:setup
+docker compose down
 ```
