@@ -1,48 +1,65 @@
 services:
-  # Postgres database
   postgres:
     image: postgres:16-alpine
     container_name: task-management-postgres
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: task_management
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-task_management}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d task_management"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-task_management}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # Runs migrate + seed once after Postgres is healthy, then exits.
   db-init:
-    image: node:22-bookworm-slim
+    build:
+      context: ./back-end
+      target: tools
     container_name: task-management-db-init
-    working_dir: /app
-    volumes:
-      - ./back-end:/app
-      - db_init_node_modules:/app/node_modules
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/task_management?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-task_management}?schema=public
     depends_on:
       postgres:
         condition: service_healthy
     restart: "no"
-    command:
-      - sh
-      - -c
-      - |
-        apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates
-        corepack enable
-        corepack prepare pnpm@10.18.1 --activate
-        pnpm install --frozen-lockfile
-        pnpm prisma:generate
-        pnpm prisma:setup
+    command: ["pnpm", "prisma:setup"]
+
+  backend:
+    build:
+      context: ./back-end
+      target: runner
+    container_name: task-management-backend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:${PORT:-3000}"
+    environment:
+      PORT: ${PORT:-3000}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-task_management}?schema=public
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: ./front-end
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000}
+    container_name: task-management-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:
-  db_init_node_modules:
