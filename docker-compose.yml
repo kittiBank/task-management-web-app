@@ -1,21 +1,48 @@
 services:
+  # Postgres database
   postgres:
     image: postgres:16-alpine
     container_name: task-management-postgres
     restart: unless-stopped
     ports:
-      - '${POSTGRES_PORT:-5432}:5432'
+      - "5432:5432"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-task_management}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: task_management
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      test: ["CMD-SHELL", "pg_isready -U postgres -d task_management"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  # Runs migrate + seed once after Postgres is healthy, then exits.
+  db-init:
+    image: node:22-bookworm-slim
+    container_name: task-management-db-init
+    working_dir: /app
+    volumes:
+      - ./back-end:/app
+      - db_init_node_modules:/app/node_modules
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/task_management?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    command:
+      - sh
+      - -c
+      - |
+        apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates
+        corepack enable
+        corepack prepare pnpm@10.18.1 --activate
+        pnpm install --frozen-lockfile
+        pnpm prisma:generate
+        pnpm prisma:setup
+
 volumes:
   postgres_data:
+  db_init_node_modules:

@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+.pnpm-store/
 
 # Build / compiled output
 dist/
@@ -26,6 +27,9 @@ lerna-debug.log*
 *.db
 *.sqlite
 back-end/data/
+
+# Prisma generated client
+**/generated/prisma/
 
 # Test / cache
 .nyc_output/
