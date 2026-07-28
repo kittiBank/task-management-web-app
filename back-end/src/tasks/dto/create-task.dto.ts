@@ -4,11 +4,11 @@ import { TaskStatus } from '../../common/enums/task-status.enum';
 export class CreateTaskDto {
   @IsString()
   @IsNotEmpty()
-  title: string;
+  title!: string;
 
   @IsOptional()
   @IsString()
-  description?: string;S
+  description?: string;
 
   @IsOptional()
   @IsEnum(TaskStatus)

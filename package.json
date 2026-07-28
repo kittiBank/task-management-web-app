@@ -1,0 +1,10 @@
+{
+  "name": "task-management-web-app",
+  "private": true,
+  "scripts": {
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:setup": "docker compose up -d --force-recreate db-init",
+    "setup": "pnpm --dir back-end install && pnpm db:up"
+  }
+}

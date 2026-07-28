@@ -1,15 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Task } from './entities/task.entity';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class TasksService {
-  constructor(
-    @InjectRepository(Task)
-    private readonly tasksRepository: Repository<Task>,
-  ) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   // CRUD methods will be implemented later
 }
-S

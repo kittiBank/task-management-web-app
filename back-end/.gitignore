@@ -2,6 +2,7 @@
 /dist
 /node_modules
 /build
+.pnpm-store/
 
 # logs
 logs
@@ -34,3 +35,6 @@ lerna-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Prisma generated client
+/src/generated/prisma
